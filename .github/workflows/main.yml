@@ -1,0 +1,61 @@
+name: Extract NEW DUBAI Premium ZIP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract Premium ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "NEW_DUBAI_ATELIER_SIGNATURE_v1.5.1_PREMIUM_REPAIRED.zip" -print -quit)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: Premium ZIP file not found!"
+            exit 1
+          fi
+
+          TEMP_DIR=$(mktemp -d)
+
+          echo "Extracting: $ZIP_FILE"
+
+          unzip -oq "$ZIP_FILE" -d "$TEMP_DIR" \
+            -x ".github/workflows/*"
+
+          if [ ! -f "$TEMP_DIR/settings.gradle.kts" ] || [ ! -d "$TEMP_DIR/app" ]; then
+            echo "ERROR: Invalid Android project structure!"
+            exit 1
+          fi
+
+          cp -a "$TEMP_DIR"/. .
+
+          rm -rf "$TEMP_DIR"
+          rm -f "$ZIP_FILE"
+
+          echo "Premium project extracted successfully!"
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update NEW DUBAI Premium project"
+            git push
+          fi
+          
